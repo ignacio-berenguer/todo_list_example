@@ -4,9 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository status
 
-The repository is currently **scaffolding only**: `specs/architecture/architecture.md` describes the intended stack, and `.claude/skills/` defines a spec-driven workflow, but the `backend/`, `frontend/`, `db/`, and `logs/` directories described in the architecture do not exist yet. They are created as features are developed.
-
-There is no `README.md` at the project root yet — it will be created/updated as features land (the `close_feature` skill enforces this).
+The MVP shipped via `feature_001` exists: `backend/` (FastAPI + SQLAlchemy + uv), `frontend/` (React 19 + Vite + Tailwind 4), `db/schema.sql`, `logs/`, and a working `README.md` at the root with full setup and run instructions. Read `README.md` first for the developer-facing setup. Architecture details live in `specs/architecture/architecture.md`.
 
 ## Spec-driven workflow ("Architect First")
 
@@ -33,17 +31,19 @@ After frontend changes:
 cd frontend && npm run build
 ```
 
-## Run commands (once modules exist)
+## Run commands
 
-Backend (Python 3.12+, FastAPI, SQLAlchemy 2.0, Pydantic v2, uv):
+Backend (FastAPI on `:8000`):
 ```bash
-cd backend && uv sync && uv run python -m app.main
+cd backend && uv run python -m app.main
 ```
 
-Frontend (React 19, Vite 7, Tailwind 4, npm):
+Frontend (Vite on `:5173`, may fall back to 5174/5175 if occupied):
 ```bash
-cd frontend && npm install && npm run dev
+cd frontend && npm run dev
 ```
+
+Both need their `.env` populated. See `README.md` for first-time setup including Clerk values.
 
 ## Architecture constraints to preserve
 
@@ -58,3 +58,11 @@ These come from `specs/architecture/architecture.md` and the feature template �
 - **Backwards compatibility:** every feature template includes the constraint *"existing application functionality from previous versions should be maintained as is, except for the changes in this feature."* Honor this when implementing.
 
 When a feature changes the architecture, update `specs/architecture/architecture.md` as part of `close_feature` — that doc is the source of truth.
+
+## Known runtime quirks worth remembering
+
+- **Clerk env vars are intentionally optional.** `CLERK_JWKS_URL` and `CLERK_ISSUER` default to empty strings; when unset, the backend boots and `/health` works, but every `/api/tareas/*` request returns HTTP 503 `"Clerk no configurado"`. This deviates from the spec (which lists them as required) but was explicitly approved during `feature_001` so the backend can be started without credentials. Do not "fix" this back to required without checking with the user.
+- **`fecha_actualizacion` is bumped Python-side** via SQLAlchemy `onupdate=datetime.utcnow`. Raw SQL `UPDATE`s won't bump it. The MVP only writes through the API, so this is fine.
+- **Description search is best-effort accent-insensitive.** SQLite's `LOWER()` is ASCII-only; searching `"maria"` does not currently match a description containing `"María"`. If this becomes a real problem the fix is FTS5 or a normalized-text column.
+- **Default `CORS_ORIGINS` covers 5173–5175** to handle Vite port fallback when 5173 is occupied. If you change it, also update the Clerk allowed-origins list.
+- **No tests yet.** Spec §7 of `feature_001` deferred them. Adding a backend test harness (pytest + httpx + a temp SQLite file) is a natural next feature.
