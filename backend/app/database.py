@@ -85,7 +85,101 @@ def init_db() -> None:
     try:
         conn.executescript(ddl)
         conn.commit()
+        _migrate_tareas_v2(conn)
     finally:
         conn.close()
 
     logger.info("schema applied path=%s db=%s", schema_path, sqlite_path)
+
+
+def _migrate_tareas_v2(conn: sqlite3.Connection) -> None:
+    """Idempotent in-place migration to feature_002 schema.
+
+    Adds the `orden` column and extends the estado CHECK to include 'iniciada'
+    on databases created before feature_002. Safe to run repeatedly.
+    """
+    cur = conn.cursor()
+
+    # 1. Add `orden` column if missing, then backfill per estado.
+    cur.execute("PRAGMA table_info(tareas)")
+    columns = {row[1] for row in cur.fetchall()}
+    if "orden" not in columns:
+        logger.info("migration tareas.orden add_column")
+        cur.execute(
+            "ALTER TABLE tareas ADD COLUMN orden INTEGER NOT NULL DEFAULT 0"
+        )
+        cur.execute(
+            """
+            WITH ordered AS (
+                SELECT
+                    id,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY estado
+                        ORDER BY fecha_prevista, id
+                    ) - 1 AS new_orden
+                FROM tareas
+            )
+            UPDATE tareas
+            SET orden = (SELECT new_orden FROM ordered WHERE ordered.id = tareas.id)
+            """
+        )
+        conn.commit()
+        logger.info("migration tareas.orden backfilled rows=%s", cur.rowcount)
+
+    # 2. Extend the estado CHECK to include 'iniciada' if not already present.
+    cur.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='tareas'"
+    )
+    row = cur.fetchone()
+    table_sql = row[0] if row else ""
+    if "iniciada" not in table_sql:
+        logger.info("migration tareas.estado_check rebuild_table")
+        cur.executescript(
+            """
+            PRAGMA foreign_keys = OFF;
+            BEGIN;
+            ALTER TABLE tareas RENAME TO tareas_old;
+            CREATE TABLE tareas (
+                id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+                descripcion         VARCHAR(500) NOT NULL,
+                fecha_prevista      DATE         NOT NULL,
+                estado              VARCHAR(20)  NOT NULL DEFAULT 'pendiente'
+                    CHECK (estado IN ('pendiente', 'iniciada', 'completado')),
+                responsable         VARCHAR(20)  NOT NULL
+                    CHECK (responsable IN ('Nacho', 'Gonzalo', 'María', 'Papá', 'Mamá')),
+                notas               TEXT,
+                orden               INTEGER      NOT NULL DEFAULT 0,
+                fecha_creacion      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                fecha_actualizacion TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+            INSERT INTO tareas (
+                id, descripcion, fecha_prevista, estado, responsable,
+                notas, orden, fecha_creacion, fecha_actualizacion
+            )
+            SELECT
+                id, descripcion, fecha_prevista, estado, responsable,
+                notas, orden, fecha_creacion, fecha_actualizacion
+            FROM tareas_old;
+            DROP TABLE tareas_old;
+            COMMIT;
+            PRAGMA foreign_keys = ON;
+            """
+        )
+        # Recreate indexes after table rebuild.
+        cur.executescript(
+            """
+            CREATE INDEX IF NOT EXISTS idx_tareas_fecha_prevista ON tareas(fecha_prevista);
+            CREATE INDEX IF NOT EXISTS idx_tareas_estado        ON tareas(estado);
+            CREATE INDEX IF NOT EXISTS idx_tareas_responsable   ON tareas(responsable);
+            CREATE INDEX IF NOT EXISTS idx_tareas_estado_orden  ON tareas(estado, orden);
+            """
+        )
+        conn.commit()
+        logger.info("migration tareas.estado_check done")
+
+    # 3. Always ensure the new index exists (covers fresh installs and old DBs
+    # that already had the column but not the index).
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_tareas_estado_orden ON tareas(estado, orden)"
+    )
+    conn.commit()

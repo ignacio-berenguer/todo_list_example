@@ -1,6 +1,6 @@
 # Todo List Example
 
-A small full-stack Tareas (to-do) manager for a family. UI is in Spanish; tasks have a description, due date, status (`pendiente` / `completado`), and an assignee from a fixed list (Nacho / Gonzalo / María / Papá / Mamá).
+A small full-stack Tareas (to-do) manager for a family. UI is in Spanish; tasks have a description, due date, status (`pendiente` / `iniciada` / `completado`), and an assignee from a fixed list (Nacho / Gonzalo / María / Papá / Mamá). The default view is a Kanban board; a Search page is also available from the navbar.
 
 ## Stack
 
@@ -86,7 +86,7 @@ cd frontend
 npm run dev
 ```
 
-Wait for the Vite "ready" line, then open the printed URL (typically `http://localhost:5173`). After signing in via Clerk, you land on `/tareas`.
+Wait for the Vite "ready" line, then open the printed URL (typically `http://localhost:5173`). After signing in via Clerk, you land on `/kanban`.
 
 ## Useful endpoints
 
@@ -96,12 +96,14 @@ Wait for the Vite "ready" line, then open the printed URL (typically `http://loc
 
 ## What the app does
 
-- **Search page** (`/tareas`) — filter by descripción, estado, responsable, and date range; sortable columns; column picker (persisted in localStorage); pagination (10/20/50). **Crear Tarea** opens a modal.
+- **Navbar** — two top-level entries, **Kanban** (default landing page) and **Búsqueda**, plus the theme toggle and Clerk user button.
+- **Kanban board** (`/kanban`) — three columns (`Pendiente` → `Iniciada` → `Completada`). Each tarea is a card showing título (descripción), notas truncated to ~80 chars (full notas on hover), fecha prevista with overdue / near-due color cues, and the responsable. A **+** button per column opens the create modal with that estado pre-filled. Cards can be moved between columns and reordered within a column by drag-and-drop; changes are saved with optimistic UI and roll back on error.
+- **Búsqueda page** (`/tareas`) — filter by descripción, estado, responsable, and date range; sortable columns; column picker (persisted in localStorage); pagination (10/20/50). **Crear Tarea** opens a modal.
 - **Detail page** (`/tareas/:id`) — read-only view with **Editar** (modal) and **Eliminar** (confirmation dialog) buttons; **Volver** preserves the previous filters via the `?from=` query string.
 - **Create / Edit modal** — descripción, fecha prevista, estado, responsable, notas. Server-side validation mirrors client-side rules.
 - **Delete** — available from a row in Search results and from the Detail page.
 
-All Tareas are **shared** across signed-in users; there are no per-user lists.
+All Tareas are **shared** across signed-in users; there are no per-user lists. The Kanban order (per-column position) is also shared server-side state.
 
 ## Verification snippets
 

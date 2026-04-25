@@ -2,7 +2,8 @@ import type { ColumnKey, Estado, Responsable, SortField } from "./types";
 
 export const ESTADOS: { value: Estado; label: string }[] = [
   { value: "pendiente", label: "Pendiente" },
-  { value: "completado", label: "Completado" },
+  { value: "iniciada", label: "Iniciada" },
+  { value: "completado", label: "Completada" },
 ];
 
 export const RESPONSABLES: Responsable[] = [

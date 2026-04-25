@@ -30,7 +30,8 @@ export function formatDateTime(
 
 export const ESTADO_LABEL: Record<string, string> = {
   pendiente: "Pendiente",
-  completado: "Completado",
+  iniciada: "Iniciada",
+  completado: "Completada",
 };
 
 export const RESPONSABLE_OPTIONS = [

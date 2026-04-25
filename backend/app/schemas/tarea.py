@@ -7,7 +7,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-EstadoEnum = Literal["pendiente", "completado"]
+EstadoEnum = Literal["pendiente", "iniciada", "completado"]
 ResponsableEnum = Literal["Nacho", "Gonzalo", "María", "Papá", "Mamá"]
 
 
@@ -20,7 +20,7 @@ class TareaBase(BaseModel):
 
 
 class TareaCreate(TareaBase):
-    pass
+    orden: int | None = None
 
 
 class TareaUpdate(BaseModel):
@@ -31,10 +31,12 @@ class TareaUpdate(BaseModel):
     estado: EstadoEnum | None = None
     responsable: ResponsableEnum | None = None
     notas: str | None = None
+    orden: int | None = None
 
 
 class TareaRead(TareaBase):
     id: int
+    orden: int
     fecha_creacion: datetime
     fecha_actualizacion: datetime
 
@@ -46,3 +48,12 @@ class TareaListResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class TareaReorderColumn(BaseModel):
+    estado: EstadoEnum
+    ordered_ids: list[int]
+
+
+class TareaReorderRequest(BaseModel):
+    columns: list[TareaReorderColumn]

@@ -1,4 +1,4 @@
-export type Estado = "pendiente" | "completado";
+export type Estado = "pendiente" | "iniciada" | "completado";
 
 export type Responsable = "Nacho" | "Gonzalo" | "María" | "Papá" | "Mamá";
 
@@ -9,6 +9,7 @@ export interface Tarea {
   estado: Estado;
   responsable: Responsable;
   notas: string | null;
+  orden: number;
   fecha_creacion: string; // ISO timestamp
   fecha_actualizacion: string; // ISO timestamp
 }
@@ -19,9 +20,19 @@ export interface TareaCreate {
   estado: Estado;
   responsable: Responsable;
   notas: string | null;
+  orden?: number | null;
 }
 
 export type TareaUpdate = Partial<TareaCreate>;
+
+export interface TareaReorderColumn {
+  estado: Estado;
+  ordered_ids: number[];
+}
+
+export interface TareaReorderRequest {
+  columns: TareaReorderColumn[];
+}
 
 export interface TareaListResponse {
   items: Tarea[];

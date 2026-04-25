@@ -11,6 +11,7 @@ import { Header } from "@/components/layout/Header";
 import { setAuthTokenGetter } from "@/lib/api";
 import SearchPage from "@/routes/SearchPage";
 import DetailPage from "@/routes/DetailPage";
+import KanbanPage from "@/routes/KanbanPage";
 import SignInPage from "@/routes/SignInPage";
 
 function ProtectedLayout() {
@@ -56,11 +57,12 @@ export default function App() {
     <Routes>
       <Route path="/sign-in/*" element={<SignInPage />} />
       <Route element={<ProtectedLayout />}>
-        <Route path="/" element={<Navigate to="/tareas" replace />} />
+        <Route path="/" element={<Navigate to="/kanban" replace />} />
+        <Route path="/kanban" element={<KanbanPage />} />
         <Route path="/tareas" element={<SearchPage />} />
         <Route path="/tareas/:id" element={<DetailPage />} />
       </Route>
-      <Route path="*" element={<Navigate to="/tareas" replace />} />
+      <Route path="*" element={<Navigate to="/kanban" replace />} />
     </Routes>
   );
 }

@@ -1,8 +1,9 @@
 import { useTheme } from "next-themes";
 import { UserButton } from "@clerk/clerk-react";
 import { Sun, Moon, Monitor } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 function ThemeToggle() {
   const { theme, setTheme } = useTheme();
@@ -36,13 +37,32 @@ function ThemeToggle() {
   );
 }
 
+function navLinkClass({ isActive }: { isActive: boolean }) {
+  return cn(
+    "text-sm transition-colors hover:text-foreground",
+    isActive
+      ? "font-semibold text-foreground underline underline-offset-8 decoration-2"
+      : "text-muted-foreground",
+  );
+}
+
 export function Header() {
   return (
     <header className="border-b bg-background sticky top-0 z-40">
       <div className="container mx-auto flex h-14 items-center justify-between px-4">
-        <Link to="/tareas" className="text-lg font-semibold">
-          Tareas
-        </Link>
+        <div className="flex items-center gap-6">
+          <Link to="/kanban" className="text-lg font-semibold">
+            Tareas
+          </Link>
+          <nav className="flex items-center gap-4">
+            <NavLink to="/kanban" className={navLinkClass}>
+              Kanban
+            </NavLink>
+            <NavLink to="/tareas" end className={navLinkClass}>
+              Búsqueda
+            </NavLink>
+          </nav>
+        </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
           <UserButton afterSignOutUrl="/sign-in" />

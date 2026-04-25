@@ -29,6 +29,7 @@ interface TareaModalProps {
   mode: Mode;
   tarea?: Tarea | null;
   onSaved?: (saved: Tarea) => void;
+  defaultEstado?: Estado;
 }
 
 interface FormState {
@@ -49,11 +50,11 @@ interface FormErrors {
 
 const DESC_MAX = 500;
 
-function emptyState(): FormState {
+function emptyState(defaultEstado: Estado = "pendiente"): FormState {
   return {
     descripcion: "",
     fecha_prevista: "",
-    estado: "pendiente",
+    estado: defaultEstado,
     responsable: "",
     notas: "",
   };
@@ -75,8 +76,9 @@ export function TareaModal({
   mode,
   tarea,
   onSaved,
+  defaultEstado,
 }: TareaModalProps) {
-  const [form, setForm] = useState<FormState>(emptyState());
+  const [form, setForm] = useState<FormState>(emptyState(defaultEstado));
   const [errors, setErrors] = useState<FormErrors>({});
   const createMutation = useCreateTareaMutation();
   const updateMutation = useUpdateTareaMutation();
@@ -87,10 +89,10 @@ export function TareaModal({
     if (mode === "edit" && tarea) {
       setForm(fromTarea(tarea));
     } else {
-      setForm(emptyState());
+      setForm(emptyState(defaultEstado));
     }
     setErrors({});
-  }, [open, mode, tarea]);
+  }, [open, mode, tarea, defaultEstado]);
 
   function validate(): FormErrors {
     const next: FormErrors = {};

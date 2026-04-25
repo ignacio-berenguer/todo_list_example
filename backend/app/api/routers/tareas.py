@@ -20,6 +20,7 @@ from app.schemas.tarea import (
     TareaCreate,
     TareaListResponse,
     TareaRead,
+    TareaReorderRequest,
     TareaUpdate,
 )
 
@@ -128,7 +129,15 @@ def create_tarea(
     db: Session = Depends(get_db),
     user: AuthUser = Depends(require_user),
 ) -> TareaRead:
-    tarea = Tarea(**payload.model_dump())
+    data = payload.model_dump()
+    if data.get("orden") is None:
+        # Append to the end of the destination column.
+        max_orden = db.execute(
+            select(func.max(Tarea.orden)).where(Tarea.estado == data["estado"])
+        ).scalar()
+        data["orden"] = 0 if max_orden is None else int(max_orden) + 1
+
+    tarea = Tarea(**data)
     db.add(tarea)
     db.commit()
     db.refresh(tarea)
@@ -136,6 +145,75 @@ def create_tarea(
     logger.info("tarea.created id=%s by=%s", tarea.id, user.email or user.sub)
 
     return TareaRead.model_validate(tarea)
+
+
+@router.post("/reorder", status_code=status.HTTP_204_NO_CONTENT)
+def reorder_tareas(
+    payload: TareaReorderRequest,
+    db: Session = Depends(get_db),
+    user: AuthUser = Depends(require_user),
+) -> Response:
+    """Atomically rewrite (estado, orden) for the given tarea IDs.
+
+    Each column entry replaces both the estado and the orden of every listed
+    tarea, with orden = its index in `ordered_ids`. Cards may move across
+    columns by appearing in a different column's `ordered_ids`.
+    """
+    seen: set[int] = set()
+    for column in payload.columns:
+        for tarea_id in column.ordered_ids:
+            if tarea_id in seen:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"tarea id={tarea_id} appears in more than one column",
+                )
+            seen.add(tarea_id)
+
+    if not seen:
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    # Verify every referenced tarea exists.
+    rows = db.execute(select(Tarea.id).where(Tarea.id.in_(seen))).all()
+    found = {row[0] for row in rows}
+    missing = seen - found
+    if missing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"unknown tarea ids: {sorted(missing)}",
+        )
+
+    transitions: list[str] = []
+    try:
+        for column in payload.columns:
+            for index, tarea_id in enumerate(column.ordered_ids):
+                tarea = db.get(Tarea, tarea_id)
+                if tarea is None:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"unknown tarea id={tarea_id}",
+                    )
+                tarea.estado = column.estado
+                tarea.orden = index
+            transitions.append(f"{column.estado}:{len(column.ordered_ids)}")
+        db.commit()
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception:
+        db.rollback()
+        logger.exception("tarea.reorder failed by=%s", user.email or user.sub)
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No se pudo reordenar las tareas",
+        )
+
+    logger.info(
+        "tarea.reorder count=%s columns=%s by=%s",
+        len(seen),
+        ",".join(transitions),
+        user.email or user.sub,
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/{tarea_id}", response_model=TareaRead)

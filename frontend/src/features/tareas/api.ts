@@ -9,6 +9,7 @@ import type {
   TareaCreate,
   TareaListResponse,
   TareaQueryParams,
+  TareaReorderRequest,
   TareaUpdate,
 } from "./types";
 
@@ -74,6 +75,65 @@ export function useUpdateTareaMutation() {
     },
     onSuccess: (data) => {
       qc.setQueryData(["tareas", data.id], data);
+      qc.invalidateQueries({ queryKey: ["tareas"] });
+    },
+  });
+}
+
+export function useReorderTareasMutation() {
+  const qc = useQueryClient();
+  return useMutation<
+    void,
+    Error,
+    TareaReorderRequest,
+    { snapshots: Array<[readonly unknown[], unknown]> }
+  >({
+    mutationFn: async (payload: TareaReorderRequest) => {
+      await api.post("/api/tareas/reorder", payload);
+    },
+    onMutate: async (payload) => {
+      // Pause concurrent refetches and snapshot the current cache so we can
+      // roll back on error.
+      await qc.cancelQueries({ queryKey: ["tareas"] });
+
+      const newEstadoById = new Map<
+        number,
+        { estado: Tarea["estado"]; orden: number }
+      >();
+      for (const column of payload.columns) {
+        column.ordered_ids.forEach((id, index) => {
+          newEstadoById.set(id, { estado: column.estado, orden: index });
+        });
+      }
+
+      const snapshots: Array<[readonly unknown[], unknown]> = [];
+      const queries = qc.getQueriesData<TareaListResponse>({
+        queryKey: ["tareas"],
+      });
+      for (const [key, value] of queries) {
+        snapshots.push([key, value]);
+        if (!value || !Array.isArray((value as TareaListResponse).items)) continue;
+        const next: TareaListResponse = {
+          ...(value as TareaListResponse),
+          items: (value as TareaListResponse).items.map((item) => {
+            const patch = newEstadoById.get(item.id);
+            return patch ? { ...item, ...patch } : item;
+          }),
+        };
+        qc.setQueryData(key, next);
+      }
+
+      return { snapshots };
+    },
+    onError: (_err, _payload, context) => {
+      if (!context) return;
+      for (const [key, value] of context.snapshots) {
+        qc.setQueryData(key, value);
+      }
+      // eslint-disable-next-line no-console
+      console.error("tareas.reorder rolled back due to API error", _err);
+    },
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: ["tareas"] });
     },
   });

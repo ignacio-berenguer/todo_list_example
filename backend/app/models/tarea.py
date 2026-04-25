@@ -14,7 +14,7 @@ class Tarea(Base):
     __tablename__ = "tareas"
     __table_args__ = (
         CheckConstraint(
-            "estado IN ('pendiente', 'completado')",
+            "estado IN ('pendiente', 'iniciada', 'completado')",
             name="ck_tareas_estado",
         ),
         CheckConstraint(
@@ -31,6 +31,9 @@ class Tarea(Base):
     )
     responsable: Mapped[str] = mapped_column(String(20), nullable=False)
     notas: Mapped[str | None] = mapped_column(Text, nullable=True)
+    orden: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default="0", default=0
+    )
     fecha_creacion: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=datetime.utcnow
     )
