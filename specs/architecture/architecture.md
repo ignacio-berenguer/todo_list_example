@@ -107,6 +107,8 @@ The top-level navbar exposes only **Kanban** and **Búsqueda**.
 
 **UI Language:** Spanish.
 
+**Form defaults:** the "Crear tarea" modal pre-fills `fecha_prevista` with today's local date.
+
 ### 3.2 Running
 
 ```bash

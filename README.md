@@ -100,7 +100,7 @@ Wait for the Vite "ready" line, then open the printed URL (typically `http://loc
 - **Kanban board** (`/kanban`) — three columns (`Pendiente` → `Iniciada` → `Completada`). Each tarea is a card showing título (descripción), notas truncated to ~80 chars (full notas on hover), fecha prevista with overdue / near-due color cues, and the responsable. A **+** button per column opens the create modal with that estado pre-filled. Cards can be moved between columns and reordered within a column by drag-and-drop; changes are saved with optimistic UI and roll back on error.
 - **Búsqueda page** (`/tareas`) — filter by descripción, estado, responsable, and date range; sortable columns; column picker (persisted in localStorage); pagination (10/20/50). **Crear Tarea** opens a modal.
 - **Detail page** (`/tareas/:id`) — read-only view with **Editar** (modal) and **Eliminar** (confirmation dialog) buttons; **Volver** preserves the previous filters via the `?from=` query string.
-- **Create / Edit modal** — descripción, fecha prevista, estado, responsable, notas. Server-side validation mirrors client-side rules.
+- **Create / Edit modal** — descripción, fecha prevista, estado, responsable, notas. When opened in **Crear** mode, **fecha prevista** is pre-filled with today's local date; the user can still change it. Server-side validation mirrors client-side rules.
 - **Delete** — available from a row in Search results and from the Detail page.
 
 All Tareas are **shared** across signed-in users; there are no per-user lists. The Kanban order (per-column position) is also shared server-side state.
