@@ -1,0 +1,45 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Environment files with secrets
+.env
+
+# Database files
+*.db
+*.sqlite3
+*.db-shm
+*.db-wal
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# Build outputs
+frontend/dist/
+
+# Test coverage
+coverage/
+.coverage
+htmlcov/
+
+# Claude settings
+.claude/settings.local.json
+
+# Keep .gitkeep files
+!.gitkeep
